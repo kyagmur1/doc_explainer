@@ -1,0 +1,31 @@
+node_modules/
+dist/
+*.zip
+test/browser/*.png
+.DS_Store
+
+# Secrets: API keys and key files must never be committed
+.env
+.env.*
+*.key
+*.pem
+
+# Logs, caches, test output
+*.log
+npm-debug.log*
+.cache/
+coverage/
+
+# Editors and OS
+.vscode/
+.idea/
+Thumbs.db
+
+# Personal documents (test PDFs are generated in temporary directories)
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx

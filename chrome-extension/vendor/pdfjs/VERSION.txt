@@ -1,0 +1,1 @@
+pdfjs-dist 4.10.38 (https://www.npmjs.com/package/pdfjs-dist), Apache-2.0. Files copied unchanged from the npm package.

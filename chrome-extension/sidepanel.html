@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-i18n-dir>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doc Explainer</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+    <script type="module" src="sidepanel.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="header-row">
+        <h1 id="title">No document open</h1>
+        <button type="button" class="theme-switch" data-theme-switch></button>
+        <button type="button" class="lang-switch" data-lang-switch>EN</button>
+      </div>
+      <p id="reader" class="reader"></p>
+    </header>
+
+    <p id="empty" class="muted" data-i18n-html="emptyHint">Select text in the PDF and click <strong>Explain</strong>. Then ask follow-up questions here.</p>
+
+    <section id="selection-section" hidden>
+      <h2><span id="selection-label" data-i18n="selection">Selection</span> <span id="selection-badge" class="badge"></span></h2>
+      <blockquote id="selection-quote" class="quote" dir="auto"></blockquote>
+      <div id="selection" class="explanation"></div>
+    </section>
+
+    <section id="chat-section" hidden>
+      <div class="source-switch" data-source-switch role="group" aria-label="Answers use" data-i18n-aria="sourceGroup">
+        <button type="button" data-source="document" data-i18n="sourceDocument" data-i18n-title="sourceDocumentTitle">Only document</button>
+        <button type="button" data-source="web" data-i18n="sourceWeb" data-i18n-title="sourceWebTitle">Web assisted</button>
+      </div>
+      <div id="chat" class="chat"></div>
+      <form id="ask-form" class="ask">
+        <textarea id="question" rows="2" maxlength="2000" placeholder="Ask a question…" data-i18n-placeholder="askPlaceholder"></textarea>
+        <div class="ask-row">
+          <button id="new-chat" type="button" class="link" hidden data-i18n="newChat">New question about the current page</button>
+          <button id="ask" type="submit" data-i18n="ask">Ask</button>
+        </div>
+      </form>
+    </section>
+
+    <details id="settings" class="settings">
+      <summary data-i18n="settings">Settings</summary>
+      <form id="key-form">
+        <label><span data-i18n="apiKey">Gemini API key</span>
+          <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key" />
+        </label>
+        <label class="remember"><input id="remember-key" type="checkbox" /> <span data-i18n="rememberKey">Remember on this device</span></label>
+        <div class="ask-row">
+          <button id="forget-key" type="button" class="link" hidden data-i18n="forgetKey">Forget key</button>
+          <button id="save-key" type="submit" data-i18n="save">Save</button>
+        </div>
+      </form>
+      <p id="key-status" class="muted"></p>
+      <p class="muted small" data-i18n="keyNote">Kept only until the browser closes, and sent only to Google. In Google AI Studio, restrict the key to the Gemini API and set a spending limit.</p>
+    </details>
+  </body>
+</html>

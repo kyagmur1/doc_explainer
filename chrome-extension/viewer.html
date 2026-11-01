@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doc Explainer</title>
+    <link rel="stylesheet" href="viewer.css" />
+    <script type="module" src="viewer.js"></script>
+  </head>
+  <body>
+    <header class="topbar" data-i18n-dir>
+      <button id="nav-toggle" class="nav-toggle" type="button" hidden aria-controls="nav" aria-expanded="false" data-i18n-title="navToggle" data-i18n-aria="navToggle">☰</button>
+      <strong class="brand">Doc Explainer</strong>
+      <span id="doc-title" class="doc-title"></span>
+      <span id="position" class="position"></span>
+      <label id="pager" class="pager" hidden><input id="page-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" data-i18n-title="goToPage" data-i18n-aria="goToPage" /><span id="page-total"></span></label>
+      <div class="source-switch" data-source-switch role="group" aria-label="Answers use" data-i18n-aria="sourceGroup">
+        <button type="button" data-source="document" data-i18n="sourceDocument" data-i18n-title="sourceDocumentTitle">Only document</button>
+        <button type="button" data-source="web" data-i18n="sourceWeb" data-i18n-title="sourceWebTitle">Web assisted</button>
+      </div>
+      <button type="button" class="theme-switch" data-theme-switch></button>
+      <button type="button" class="lang-switch" data-lang-switch>EN</button>
+      <button id="open-panel" type="button" data-i18n="sidePanel">Side panel</button>
+    </header>
+
+    <aside id="nav" class="nav" hidden data-i18n-dir>
+      <div id="nav-tabs" class="nav-tabs" role="tablist">
+        <button id="nav-tab-outline" type="button" role="tab" aria-controls="nav-outline" data-i18n="navContents">Contents</button>
+        <button id="nav-tab-pages" type="button" role="tab" aria-controls="nav-pages" data-i18n="navPages">Pages</button>
+      </div>
+      <div id="nav-outline" class="nav-view" role="tabpanel" aria-labelledby="nav-tab-outline"></div>
+      <div id="nav-pages" class="nav-view" role="tabpanel" aria-labelledby="nav-tab-pages" hidden></div>
+    </aside>
+
+    <main id="message" class="message" hidden data-i18n-dir>
+      <p><strong data-i18n="openPdfTitle">Open a PDF in Chrome</strong></p>
+      <p data-i18n="openPdfText">A local file (file:///C:/…/x.pdf) or a link to a PDF. It opens here automatically. Select text and click Explain; only the text is sent to Gemini.</p>
+    </main>
+
+    <div id="pages" class="pages" hidden></div>
+    <div id="error" class="error" hidden data-i18n-dir></div>
+    <doc-bubble id="bubble"></doc-bubble>
+  </body>
+</html>
