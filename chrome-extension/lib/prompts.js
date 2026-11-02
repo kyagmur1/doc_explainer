@@ -138,35 +138,36 @@ const languageReminder = (lang) => `(Answer in ${promptLanguage(lang)}.)`;
 
 // Where knowledge may come from (the user's switch). Kept short: it goes with every request.
 //   document: faithful to the document only, no search.
-//   web: may add background knowledge and Google Search (gemini.js turns the tool on), so it
+//   web: may add background knowledge and web search (llm.js turns the provider's tool on), so it
 //        can explain what an advanced document takes for granted.
 export const SOURCES = ['document', 'web'];
+// search: the provider's name for its search tool (Gemini: Google Search).
 const SOURCE_RULE = {
-  document: 'Use only the document text provided. If something needed is missing, say so in one short sentence; do not guess.',
-  web:
-    'You may use general knowledge and Google Search to explain background the document takes for granted. ' +
+  document: () => 'Use only the document text provided. If something needed is missing, say so in one short sentence; do not guess.',
+  web: (search) =>
+    `You may use general knowledge and ${search} to explain background the document takes for granted. ` +
     "Facts, numbers and claims about this document come only from its text; never present outside knowledge as the document's. " +
     'If unsure, say so briefly.',
 };
 
 // The bubble shows this answer; the TL;DR line comes first.
-export function explainerSystem(source, lang = 'en') {
+export function explainerSystem(source, lang = 'en', search = 'Google Search') {
   return (
     `${languageRule(lang)} ` +
     'You help someone understand a document they are reading on their own. They selected a piece of text. ' +
     'Explain what it means here: the idea behind it, not a rephrasing. Do not explain the whole page. ' +
-    `${SIMPLE_STYLE} ${SOURCE_RULE[source]} ` +
+    `${SIMPLE_STYLE} ${SOURCE_RULE[source](search)} ` +
     `Format: the first line starts with the label "TL;DR: " (keep this label exactly), followed by the core meaning in ${promptLanguage(lang)}, 1-2 short sentences, under 40 words. ` +
     'Then an empty line and a short explanation (short paragraphs or "- " bullets, no headings, no repeat of the TL;DR). ' +
     'Whole answer under 100 words.'
   );
 }
 
-export function chatSystem(source, lang = 'en') {
+export function chatSystem(source, lang = 'en', search = 'Google Search') {
   return (
     `${languageRule(lang)} ` +
     'You answer follow-up questions from someone reading a document on their own. Answer only what was asked. ' +
-    `${SIMPLE_STYLE} ${SOURCE_RULE[source]} ` +
+    `${SIMPLE_STYLE} ${SOURCE_RULE[source](search)} ` +
     'Under 100 words: short paragraphs or "- " bullets, no headings.'
   );
 }

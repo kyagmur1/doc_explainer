@@ -1,19 +1,28 @@
 # Privacy policy: Doc Explainer
 
-_Last updated: 2026-11-01_
+_Last updated: 2026-11-02_
 
-Doc Explainer is a Chrome extension that explains text in PDF documents with Google's Gemini API,
-using an API key that you provide. It has no server of its own: its developer receives no data
+Doc Explainer is a Chrome extension that explains text in PDF documents with an AI service you
+choose in its settings: **Google Gemini**, **OpenAI** or **Anthropic Claude**, using an API key
+that you provide for that service. It has no server of its own: its developer receives no data
 from you at all.
 
 ## What the extension handles, and where it goes
 
+Data goes only to the AI service chosen in the side panel's **Settings**, at that service's
+official API address. The other services receive nothing.
+
 | Data | Sent to | When |
 |---|---|---|
-| Text of PDF documents that open in the extension's viewer | Google Gemini API (`generativelanguage.googleapis.com`) | While an API key is set: the whole text once per document, to build a summary; then the current page, related passages and the summary with each explanation or question |
-| Text you select and click **Explain** on; questions you type in the side panel | Google Gemini API | Each time you click **Explain** or send a question |
-| Your Gemini API key | Google Gemini API, in a request header | With every request to Gemini, and once to check it when you save it |
-| Settings (theme, answer source, language) | Nowhere; Chrome may sync them between your own signed-in browsers (`chrome.storage.sync`) | — |
+| Text of PDF documents that open in the extension's viewer | The chosen AI service | While an API key for it is set: the text once per document, to build a summary; then the current page, related passages and the summary with each explanation or question |
+| Text you select and click **Explain** on; questions you type in the side panel | The chosen AI service | Each time you click **Explain** or send a question |
+| Your API key for a service | Only that service, in a request header | With every request to it, and once to check it when you save it |
+| Settings (theme, answer source, language, chosen AI service) | Nowhere; Chrome may sync them between your own signed-in browsers (`chrome.storage.sync`) | — |
+
+The official addresses are `generativelanguage.googleapis.com` (Gemini), `api.openai.com`
+(OpenAI) and `api.anthropic.com` (Claude). A key is never sent to another service's address; a key
+that is clearly another service's (for example a Gemini key entered as an OpenAI key) is refused
+before anything is sent.
 
 PDFs are opened in the extension's viewer automatically when Chrome loads them. To recognise them,
 the extension looks at the response headers (such as the content type) of pages and files you
@@ -21,26 +30,35 @@ load; this happens inside your browser, and nothing of it is stored or sent anyw
 downloads the PDF from its own address, as Chrome's built-in viewer would. The extension does not
 read the content of other web pages, your browsing history, or any other data.
 
-When you choose **Web assisted**, Gemini may use Google Search to answer; the search is done by
-Google as part of the Gemini request.
+When you choose **Web assisted**, the chosen service may search the web to answer, as part of the
+request: Google Search for Gemini, OpenAI's web search tool, or Claude's web search tool.
 
-## Google's handling of the data
+## How the AI services handle the data
 
-The data above is sent to Google under your own API key and is governed by Google's terms for the
-Gemini API (the [Gemini API Additional Terms of Service](https://ai.google.dev/gemini-api/terms) and
-the [Google Privacy Policy](https://policies.google.com/privacy)). Google's terms say that on the
-free (unpaid) tier submitted content may be used to improve Google's products, and that on a paid
-tier it is not; check the current terms for your key. Do not
-open documents in the viewer that you are not allowed to share with Google under your key's terms.
+The data above is sent under your own API key and is governed by that service's terms and privacy
+policy. Check the current terms for your key and account, and do not open documents in the viewer
+that you are not allowed to share with the service you chose.
+
+- **Google Gemini:** the [Gemini API Additional Terms of Service](https://ai.google.dev/gemini-api/terms)
+  and the [Google Privacy Policy](https://policies.google.com/privacy). Google's terms say that on
+  the free (unpaid) tier submitted content may be used to improve Google's products, and that on a
+  paid tier it is not.
+- **OpenAI:** the [OpenAI Services Agreement and policies](https://openai.com/policies/) and the
+  [OpenAI Privacy Policy](https://openai.com/policies/privacy-policy/). The extension asks OpenAI
+  not to store its responses for later retrieval (`store: false`).
+- **Anthropic Claude:** [Anthropic's Commercial Terms](https://www.anthropic.com/legal/commercial-terms)
+  and the [Anthropic Privacy Policy](https://www.anthropic.com/legal/privacy). With **Web assisted**,
+  Claude's web search can filter results in Anthropic's code-execution containers, whose data
+  Anthropic's documentation says is kept for up to 30 days.
 
 ## What is stored on your computer
 
-- **API key:** in Chrome's session storage, deleted when the browser closes; or, if you tick
-  **Remember on this device**, in Chrome's local extension storage on this computer (not
-  encrypted, never synced) until you click **Forget key** or untick the box.
+- **API keys:** one per service, in Chrome's session storage, deleted when the browser closes; or,
+  if you tick **Remember on this device**, in Chrome's local extension storage on this computer
+  (not encrypted, never synced) until you click **Forget key** or untick the box.
 - **Document summaries, answers and chat:** in Chrome's session storage, in memory only, and
   deleted when the document's last tab closes or the browser closes.
-- **Settings:** theme, answer source and language, in Chrome's sync storage.
+- **Settings:** theme, answer source, language and chosen AI service, in Chrome's sync storage.
 
 The extension writes nothing about your documents to disk, uses no tracking cookies, analytics or
 tracking, and loads no remote code. When downloading a PDF, it may send the source website's
@@ -55,10 +73,13 @@ including the Limited Use requirements.
 
 ## Your choices
 
-- Remove your key with **Forget key** in the side panel; uninstalling the extension removes all
-  its stored data.
-- Revoke or restrict the key itself in [Google AI Studio](https://aistudio.google.com/apikey).
-- Without a key, the extension sends nothing to Google.
+- Choose which AI service is used, or none: without a key for the chosen service, the extension
+  sends nothing.
+- Remove a key with **Forget key** in the side panel; uninstalling the extension removes all its
+  stored data.
+- Revoke or restrict the key itself with the service: [Google AI Studio](https://aistudio.google.com/apikey),
+  the [OpenAI Platform](https://platform.openai.com/api-keys) or the
+  [Claude Console](https://platform.claude.com/settings/keys).
 
 ## Contact
 

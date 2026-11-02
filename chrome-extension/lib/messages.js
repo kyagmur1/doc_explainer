@@ -33,13 +33,14 @@ export const MSG = {
   DENIED: 'denied', // the port was refused (no access); the page should not reconnect
 };
 
-// Preferences (chrome.storage.sync). The Gemini API key is NOT here: it lives only in
-// chrome.storage.session (see sidepanel.js, gemini.js).
+// Preferences (chrome.storage.sync). API keys are NOT here: they live in chrome.storage.session
+// or, if the user chooses, chrome.storage.local (see sidepanel.js, llm.js).
 export const DEFAULT_SETTINGS = {
   theme: 'system', // 'system' | 'light' | 'dark', see theme.js
   source: 'document', // 'document' = only the document | 'web' = web assisted, see source-switch.js
   lang: 'en', // interface and answer language, see i18n.js
   nav: { open: false, tab: 'outline' }, // viewer's navigation panel, see nav.js
+  provider: 'gemini', // 'gemini' | 'openai' | 'anthropic', see llm.js
 };
 
 export async function getSettings() {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Doc Explainer",
-  "version": "0.1.0",
-  "description": "Select text in a PDF and get a short, plain explanation from Google Gemini, using your own API key.",
+  "version": "0.2.0",
+  "description": "Select text in a PDF and get a short, plain explanation from Gemini, OpenAI or Claude, using your own API key.",
   "minimum_chrome_version": "128",
   "action": {
     "default_title": "Doc Explainer side panel",
