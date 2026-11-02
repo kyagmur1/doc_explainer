@@ -7,7 +7,7 @@
 //    Chrome's own viewer or a download starts. Local files have no headers, so file:// URLs
 //    ending in .pdf are redirected via webNavigation (needs "Allow access to file URLs").
 //
-// B. AI work for the open document, calling Gemini directly (lib/gemini.js) with the user's key.
+// B. AI work for the open document, calling the chosen provider directly (lib/llm.js) with the user's key.
 //    Scrolling never causes a request: the viewer only reports the page in view, which chat
 //    questions use as context. Requests happen only for
 //    1. the document reader: once per document, builds the context pack (lib/reader.js)
@@ -25,7 +25,7 @@ import { PORT, MSG, getSettings } from './lib/messages.js';
 import { fileViewerUrl, docViewerUrl, parseViewerQuery, looksLikePdfResponse } from './lib/pdf-routing.js';
 import * as access from './lib/access.js';
 import * as docSession from './lib/doc-session.js';
-import { streamText } from './lib/gemini.js';
+import { streamText, providerFor } from './lib/llm.js';
 import { buildPack } from './lib/reader.js';
 import { relevantPassages } from './lib/passages.js';
 import { explainContents, chatContents, explainerSystem, chatSystem } from './lib/prompts.js';
@@ -271,7 +271,9 @@ async function startReader(hash, { retry = false } = {}) {
     setReader(hash, 'reading', null, progress);
     let waiting = false;
     try {
+      const { provider } = await getSettings(); // the provider chosen when reading starts
       const pack = await buildPack(doc, {
+        provider,
         signal,
         onProgress: (done, total) => setReader(hash, 'reading', null, (progress = { done, total })),
         // Shown as "waiting for Gemini's rate limit"; a request on its way is noted (see above).
@@ -314,7 +316,8 @@ async function startReader(hash, { retry = false } = {}) {
 
 // 2. Selection explanations
 
-const answerKey = ({ n, context, source, lang, selection }) => `v${ANSWER_STYLE}:${n}:${context}:${source}:${lang}:${selection}`;
+// Stored answers are per provider and model: another one never shows an answer it didn't write.
+const answerKey = ({ n, context, source, lang, provider, model, selection }) => `v${ANSWER_STYLE}:${provider}:${model}:${n}:${context}:${source}:${lang}:${selection}`;
 
 // Only the latest selection is shown; answers for older ones are dropped (but still stored).
 function showSelection(job, text, done, extra = {}) {
@@ -330,12 +333,13 @@ async function explainSelection({ n, text, id }) {
   // Follow-ups are about this selection. Explaining the same text again keeps its conversation.
   const same = state.chat?.selection?.n === n && state.chat.selection.text === text;
   setChat(same ? { ...state.chat, selectionId: id } : newChat({ n, text }, id));
-  const { source, lang } = await getSettings();
-  if (id !== state.latestSelectionId) return; // a newer click came in meanwhile
+  const { source, lang, provider } = await getSettings();
+  if (id !== state.latestSelectionId) return;
+  const p = providerFor(provider); // a newer click came in meanwhile
 
   // Context version and source are fixed now, so the stored answer matches what the request uses.
   const context = state.pack ? 'passages' : 'passages-basic';
-  const job = { hash: state.hash, doc: state.doc, pack: state.pack, n, selection: text, id, context, source, lang, answer: '' };
+  const job = { hash: state.hash, doc: state.doc, pack: state.pack, n, selection: text, id, context, source, lang, provider: p.id, model: p.config.explainerModel, answer: '' };
   const key = answerKey(job);
   const running = explainJobs.get(`${job.hash}:${key}`);
   if (running) {
@@ -351,10 +355,16 @@ async function explainSelection({ n, text, id }) {
     const passages = relevantPassages(job.doc, { n, selection: text, maxTokens: PASSAGE_TOKENS });
     await streamText({
       label: `explain page=${n}`,
-      systemInstruction: explainerSystem(source, lang),
+      systemInstruction: explainerSystem(source, lang, p.searchName),
+      provider: p.id,
       contents: explainContents({ doc: job.doc, pack: job.pack, n, selection: text, passages, lang }),
       search: source === 'web',
       signal: signalFor(job.hash),
+      // A rate-limit wait is shown as such (bubble and side panel), until the request goes out.
+      onState: (what, until) => {
+        if (what === 'waiting') showSelection(job, job.answer, false, { waitUntil: until });
+        else if (what === 'sent') showSelection(job, job.answer, false);
+      },
       onText: (chunk) => {
         job.answer += chunk;
         showSelection(job, job.answer, false);
@@ -427,17 +437,26 @@ async function ask(question) {
   const hash = state.hash;
   const doc = state.doc;
   const pack = state.pack;
-  const { source, lang } = await getSettings();
+  const { source, lang, provider } = await getSettings();
+  const p = providerFor(provider);
+  Object.assign(answer, { provider: p.id, model: p.config.explainerModel });
   answer.lang = lang; // shown with a note if the language is changed before or after it arrives
   runningAnswers.add(answer.id);
   try {
     const passages = relevantPassages(doc, { n, selection: `${chat.selection?.text ?? ''} ${question}`, maxTokens: PASSAGE_TOKENS });
     await streamText({
       label: `chat page=${n}${chat.selection ? ' selection' : ''}`,
-      systemInstruction: chatSystem(source, lang),
+      systemInstruction: chatSystem(source, lang, p.searchName),
+      provider: p.id,
       contents: chatContents({ doc, pack, n, selection: chat.selection?.text, history, question, passages, lang }),
       search: source === 'web',
       signal: signalFor(hash),
+      onState: (what, until) => {
+        if (what === 'waiting') answer.waitUntil = until;
+        else if (what === 'sent') delete answer.waitUntil;
+        else return;
+        updateChat(hash, chat);
+      },
       onText: (chunk) => {
         answer.text += chunk;
         updateChat(hash, chat);
@@ -448,6 +467,7 @@ async function ask(question) {
     answer.error = err.message;
   } finally {
     runningAnswers.delete(answer.id);
+    delete answer.waitUntil;
   }
   answer.done = true;
   await updateChat(hash, chat);
@@ -581,5 +601,6 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // A key was entered after reading failed for lack of one: try again.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if ((area === 'session' || area === 'local') && changes.apiKey?.newValue && state.hash && state.reader.status === 'error') startReader(state.hash);
+  const keySet = Object.entries(changes).some(([k, c]) => /^apiKey(:|$)/.test(k) && c.newValue);
+  if ((area === 'session' || area === 'local') && keySet && state.hash && state.reader.status === 'error') startReader(state.hash);
 });

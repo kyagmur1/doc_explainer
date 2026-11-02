@@ -168,7 +168,7 @@ export class DocBubble extends HTMLElement {
     const badge = badgeText(msg.level, msg.source);
     let text;
     if (msg.error && !msg.text) text = `<p class="error">${inlineToHtml(msg.error)}</p>`;
-    else if (!msg.text) text = `<p class="muted dots">${t('explaining')}</p>`;
+    else if (!msg.text) text = `<p class="muted dots">${msg.waitUntil > Date.now() ? t('answerWaiting') : t('explaining')}</p>`;
     else {
       text = `<p class="tldr" dir="auto">${inlineToHtml(tldr || body.split('\n')[0])}</p>`;
       if (tldr && body) text += `<div class="body">${bodyToHtml(body)}</div>`;

@@ -2,11 +2,11 @@
 // selection, or about the page in view), the document-reader status, and settings.
 
 import { PORT, MSG } from './lib/messages.js';
-import { checkKey, webSearchStatus, getApiKey } from './lib/gemini.js';
+import { checkKey, webSearchStatus, getApiKey, providerFor, activeProviderId } from './lib/llm.js';
 import { splitExplanation, bodyToHtml, inlineToHtml, badgeText, readerNote } from './lib/render.js';
 import { initTheme } from './lib/theme.js';
 import { initSourceSwitch } from './lib/source-switch.js';
-import { initI18n, t, currentLanguage, LANGUAGES } from './lib/i18n.js';
+import { initI18n, t, currentLanguage, LANGUAGES, PROVIDER_INFO } from './lib/i18n.js';
 
 initTheme();
 initSourceSwitch();
@@ -85,7 +85,7 @@ function renderSelection(msg) {
   badge.textContent = badgeText(msg.level, msg.source);
   badge.className = `badge ${msg.level}`;
   badge.hidden = !badge.textContent;
-  $('selection').innerHTML = msg.text ? answerHtml(msg.text, msg.done, msg.error, msg.lang) : msg.error ? `<p class="error">${inlineToHtml(msg.error)}</p>` : `<p class="muted">${t('explaining')}…</p>`;
+  $('selection').innerHTML = msg.text ? answerHtml(msg.text, msg.done, msg.error, msg.lang) : msg.error ? `<p class="error">${inlineToHtml(msg.error)}</p>` : `<p class="muted">${msg.waitUntil > Date.now() ? t('answerWaiting') : `${t('explaining')}…`}</p>`;
   renderChat(chat);
 }
 
@@ -106,7 +106,7 @@ function renderChat(next) {
     .map((m) =>
       m.role === 'user'
         ? `<p class="msg user" dir="auto">${inlineToHtml(m.text)}</p>`
-        : `<div class="msg model${m.interrupted ? ' interrupted' : ''}">${m.text ? answerHtml(m.text, m.done, m.error, m.lang) : m.error ? `<p class="error">${inlineToHtml(m.error)}</p>` : `<p class="muted">${t('thinking')}</p>`}${m === last && canRetry ? `<button type="button" class="link retry-chat">${t('retry')}</button>` : ''}</div>`,
+        : `<div class="msg model${m.interrupted ? ' interrupted' : ''}">${m.text ? answerHtml(m.text, m.done, m.error, m.lang) : m.error ? `<p class="error">${inlineToHtml(m.error)}</p>` : `<p class="muted">${m.waitUntil > Date.now() ? t('answerWaiting') : t('thinking')}</p>`}${m === last && canRetry ? `<button type="button" class="link retry-chat">${t('retry')}</button>` : ''}</div>`,
     )
     .join('');
   const busy = !!chat?.messages.some((m) => !m.done);
@@ -143,27 +143,43 @@ document.addEventListener('click', (e) => {
   if (e.target.id === 'retry') port.postMessage({ type: MSG.RETRY_READER });
 });
 
-// ---------- Settings: the Gemini API key ----------
-// Kept in chrome.storage.session (memory; gone when the browser closes) or, with "Remember on
-// this device", in chrome.storage.local (this computer's Chrome profile; never storage.sync).
-// Always in one of the two only. It is checked with Google's free model list before saving,
-// and never shown again or logged.
+// ---------- Settings: the AI service and its API key ----------
+// One key per service, each kept in chrome.storage.session (memory; gone when the browser closes)
+// or, with "Remember on this device", in chrome.storage.local (this computer's Chrome profile;
+// never storage.sync); always in one of the two only. A key is checked with its own service
+// before saving (no tokens used), sent only to that service, and never shown again or logged.
 
-const remembered = async () => !!(await chrome.storage.local.get('apiKey')).apiKey;
+const remembered = async (id) => {
+  const k = providerFor(id).keyStorage;
+  return !!(await chrome.storage.local.get(k))[k];
+};
 
-async function storeKey(key, onDevice) {
+async function storeKey(id, key, onDevice) {
+  const k = providerFor(id).keyStorage;
   if (onDevice) {
-    await chrome.storage.local.set({ apiKey: key });
-    await chrome.storage.session.remove('apiKey');
+    await chrome.storage.local.set({ [k]: key });
+    await chrome.storage.session.remove(k);
   } else {
-    await chrome.storage.session.set({ apiKey: key });
-    await chrome.storage.local.remove('apiKey');
+    await chrome.storage.session.set({ [k]: key });
+    await chrome.storage.local.remove(k);
   }
 }
 
+// Another service: its own key (and its own "remember" choice, unticked until it has a key).
+$('provider').addEventListener('change', () => {
+  $('remember-key').checked = false;
+  chrome.storage.sync.set({ provider: $('provider').value });
+});
+
 async function showKeyState() {
-  const apiKey = await getApiKey();
-  const onDevice = await remembered();
+  const id = await activeProviderId();
+  const { config } = providerFor(id);
+  $('provider').value = id;
+  $('key-label').textContent = t('apiKeyFor');
+  $('key-note').textContent = t('keyNote', PROVIDER_INFO[id]);
+  $('models').textContent = `${t('models')}: ${[...new Set([config.explainerModel, config.readerModel])].join(' · ')}`;
+  const apiKey = await getApiKey(id);
+  const onDevice = await remembered(id);
   $('api-key').value = '';
   $('api-key').placeholder = apiKey ? t(onDevice ? 'keySavedDevice' : 'keySaved') : t('pasteKey');
   $('forget-key').hidden = !apiKey;
@@ -172,7 +188,7 @@ async function showKeyState() {
     $('settings').open = true;
     $('key-status').textContent = t('noKeyYet');
   } else {
-    const search = (await webSearchStatus()) === 'available' ? t('searchAvailable') : t('searchUnavailable');
+    const search = (await webSearchStatus(id)) === 'available' ? t('searchAvailable') : t('searchUnavailable');
     $('key-status').textContent = t(onDevice ? 'keySavedDeviceStatus' : 'keySavedStatus', { status: search });
   }
 }
@@ -181,34 +197,38 @@ $('key-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const key = $('api-key').value.trim();
   if (!key) return;
+  const id = await activeProviderId(); // the key belongs to the service chosen now
   $('save-key').disabled = true;
   $('key-status').textContent = t('checkingKey');
-  const problem = await checkKey(key);
+  const problem = await checkKey(key, id);
   $('save-key').disabled = false;
   if (problem) {
     $('key-status').textContent = problem;
     return;
   }
-  await storeKey(key, $('remember-key').checked);
+  await storeKey(id, key, $('remember-key').checked);
   await showKeyState();
 });
 
 // Changed after the key was saved: the key moves there right away.
 $('remember-key').addEventListener('change', async () => {
-  const key = await getApiKey();
+  const id = await activeProviderId();
+  const key = await getApiKey(id);
   if (!key) return;
-  await storeKey(key, $('remember-key').checked);
+  await storeKey(id, key, $('remember-key').checked);
   await showKeyState();
 });
 
+// Forgets the chosen service's key only; keys of the other services stay.
 $('forget-key').addEventListener('click', async () => {
-  await chrome.storage.session.remove('apiKey');
-  await chrome.storage.local.remove('apiKey');
+  const k = providerFor(await activeProviderId()).keyStorage;
+  await chrome.storage.session.remove(k);
+  await chrome.storage.local.remove(k);
   $('remember-key').checked = false;
   await showKeyState();
 });
 
-// The language changed: redraw everything that was drawn with the old one.
+// The language or the AI service changed: redraw everything that was drawn with the old one.
 initI18n(() => {
   $('title').textContent = title ?? t('noDocument');
   renderReader(reader);

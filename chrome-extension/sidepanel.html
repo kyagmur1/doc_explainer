@@ -42,8 +42,16 @@
 
     <details id="settings" class="settings">
       <summary data-i18n="settings">Settings</summary>
+      <label class="provider"><span data-i18n="provider">AI service</span>
+        <select id="provider">
+          <option value="gemini">Gemini (Google)</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Claude (Anthropic)</option>
+        </select>
+      </label>
+      <p id="models" class="muted small"></p>
       <form id="key-form">
-        <label><span data-i18n="apiKey">Gemini API key</span>
+        <label><span id="key-label">Gemini API key</span>
           <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key" />
         </label>
         <label class="remember"><input id="remember-key" type="checkbox" /> <span data-i18n="rememberKey">Remember on this device</span></label>
@@ -53,7 +61,7 @@
         </div>
       </form>
       <p id="key-status" class="muted"></p>
-      <p class="muted small" data-i18n="keyNote">Kept only until the browser closes, and sent only to Google. In Google AI Studio, restrict the key to the Gemini API and set a spending limit.</p>
+      <p id="key-note" class="muted small"></p>
     </details>
   </body>
 </html>

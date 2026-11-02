@@ -111,6 +111,8 @@ section { margin-bottom: 20px; }
 .settings summary { cursor: pointer; color: var(--muted); }
 .settings label { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; }
 .settings label.remember { flex-direction: row; align-items: center; gap: 6px; margin-top: 8px; cursor: pointer; }
+.settings select { font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.settings #models { margin: 6px 0 0; }
 .settings input[type="password"] { font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .settings #save-key { margin-inline-start: auto; font: inherit; padding: 4px 14px; border: 0; border-radius: 8px; background: var(--accent); color: var(--bg); cursor: pointer; }
 .settings #save-key:disabled { opacity: 0.5; }

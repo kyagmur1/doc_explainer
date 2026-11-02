@@ -95,6 +95,9 @@ async function docs() {
 }
 
 // Same URL, same ID; a new URL gets a new random ID. Only a new ID writes the map.
+// The oldest are dropped by their `seq` number, not by the object's key order: an ID made only of
+// digits (e.g. "12345678", about 1 in 23,000) is an array-index key, which JavaScript always lists
+// first, so key order would drop it (even the brand-new one) instead of the oldest.
 export function docIdFor(url) {
   return serial(async () => {
     const all = await docs();
@@ -103,8 +106,11 @@ export function docIdFor(url) {
     let id;
     do id = newId();
     while (all[id]);
-    all[id] = { url, at: Date.now() };
-    const kept = Object.entries(all).slice(-MAX_DOCS); // insertion order: the oldest go first, never the new one
+    const seq = Math.max(0, ...Object.values(all).map((d) => d.seq ?? 0)) + 1;
+    all[id] = { url, at: Date.now(), seq };
+    const kept = Object.entries(all)
+      .sort(([, a], [, b]) => (a.seq ?? 0) - (b.seq ?? 0))
+      .slice(-MAX_DOCS); // the oldest go first, never the new one
     await chrome.storage.session.set({ docs: Object.fromEntries(kept) });
     return id;
   });
